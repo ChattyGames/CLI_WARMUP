@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html{color-scheme:light}body{margin:0}</style>
+<title>CLI Warm-Up</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  /* Layout: one slide-sized column. Mission on top, a real-looking terminal below it,
+     coaching and the Next button underneath. Linux track is charcoal, PowerShell track is classic navy. */
+  :root {
+    --bg: #eef1f5; --fg: #17202b; --mute: #566273; --surface: #ffffff; --line: #cdd5df;
+    --accent: #0b6e8a; --accent-ink: #ffffff; --good: #1b7a3e; --warn: #9a5700; --bad: #b42318;
+    --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    /* terminals are dark in both themes on purpose */
+    --lx-bg: #0e1116; --lx-fg: #d7dde5; --lx-dim: #8d98a6; --lx-user: #5fd38d; --lx-path: #6ea8fe; --lx-bar: #1b2129;
+    --ps-bg: #012456; --ps-fg: #eeedf0; --ps-dim: #9fb3d6; --ps-bar: #0a3270; --ps-err: #ff6b6b; --ps-cmt: #f9f1a5;
+    --err: #ff7b72;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f141b; --fg: #e7ecf2; --mute: #98a4b3; --surface: #171e27; --line: #2b3644;
+      --accent: #5cc2dd; --accent-ink: #06222b; --good: #5fd38d; --warn: #f0b35a; --bad: #ff8a80; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f141b; --fg: #e7ecf2; --mute: #98a4b3; --surface: #171e27; --line: #2b3644;
+    --accent: #5cc2dd; --accent-ink: #06222b; --good: #5fd38d; --warn: #f0b35a; --bad: #ff8a80; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 16px; line-height: 1.45;
+    padding-block: 20px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .top { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-end; }
+  .eyebrow { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); font-weight: 600; }
+  h1 { margin: 2px 0 0; font-size: 28px; line-height: 1.1; text-wrap: balance; }
+  .wo { margin: 4px 0 0; color: var(--mute); font-size: 14px; }
+  .ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .daysel { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+  .tabs { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .tabs button { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 16px; border: 0; background: transparent; color: var(--mute); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+  .tabs button:focus-visible, .btn:focus-visible, #cmd:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .progress { display: flex; gap: 4px; }
+  .progress i { flex: 1; height: 7px; border-radius: 4px; background: var(--line); display: block; }
+  .progress i.first { background: var(--good); }
+  .progress i.retry { background: var(--accent); }
+  .progress i.shown { background: var(--warn); }
+  .progress i.now { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+  .count { margin: -6px 0 0; font-size: 13px; color: var(--mute); font-variant-numeric: tabular-nums; }
+  .mission { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
+  .label { margin: 0 0 4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  #task { margin: 0; font-size: 20px; line-height: 1.35; text-wrap: pretty; }
+  .term { border-radius: 10px; overflow: hidden; border: 1px solid #000; box-shadow: 0 6px 20px rgba(0,0,0,.18); font-family: var(--font-mono); }
+  .term .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-size: 12px; }
+  .term .dots { display: flex; gap: 6px; }
+  .term .dots b { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; display: block; }
+  .term .dots b:nth-child(2) { background: #febc2e; } .term .dots b:nth-child(3) { background: #28c840; }
+  .term .body { padding: 12px 14px 16px; font-size: 14px; line-height: 1.5; height: 340px; overflow: auto; }
+  .term.linux { background: var(--lx-bg); color: var(--lx-fg); } .term.linux .bar { background: var(--lx-bar); color: var(--lx-dim); }
+  .term.ps { background: var(--ps-bg); color: var(--ps-fg); } .term.ps .bar { background: var(--ps-bar); color: var(--ps-dim); }
+  .ln { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .out { white-space: pre; margin: 0; font: inherit; }
+  .linux .dim { color: var(--lx-dim); } .ps .dim { color: var(--ps-dim); }
+  .linux .err { color: var(--err); } .ps .err { color: var(--ps-err); }
+  .linux .u { color: var(--lx-user); font-weight: 700; } .linux .p { color: var(--lx-path); font-weight: 700; }
+  .cmdtxt { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #form { display: flex; flex-wrap: wrap; align-items: baseline; margin: 0; }
+  .pr { white-space: nowrap; }
+  #cmd { flex: 1 1 10ch; min-width: 10ch; background: transparent; border: 0; color: inherit; font: inherit; padding: 0 0 0 .6ch; caret-color: currentColor; }
+  #cmd:disabled { opacity: 1; }
+  #cmd:focus-visible { outline: none; }
+  #form:focus-within { background: rgba(255,255,255,.05); border-radius: 3px; }
+  .coach { min-height: 3.2em; font-size: 16px; }
+  .coach p { margin: 0; }
+  .coach .ok { color: var(--good); font-weight: 600; }
+  .coach .no { color: var(--bad); font-weight: 600; }
+  .coach code, .sum code { font-family: var(--font-mono); font-size: .9em; background: color-mix(in srgb, var(--fg) 10%, transparent); padding: 1px 5px; border-radius: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn { font: inherit; font-weight: 600; font-size: 15px; padding: 9px 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .sum { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .sum h2 { margin: 0 0 8px; font-size: 22px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 12px; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+  .stats b { font-size: 20px; }
+  .log { margin: 0 0 14px; padding: 0; list-style: none; display: grid; gap: 4px; }
+  .log li { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px 0; border-top: 1px solid var(--line); }
+  .log code { flex: 0 1 auto; }
+  .log span { color: var(--mute); }
+  .shake { animation: shake .25s; }
+  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  @media (prefers-reduced-motion: reduce) { .shake { animation: none; } }
+  @media (max-width: 520px) { h1 { font-size: 24px; } #task { font-size: 18px; } .term .body { height: 300px; font-size: 13px; } }
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="dayLabel">AP Networking &middot; Day 1</p>
+      <h1>CLI Warm-Up</h1>
+      <p class="wo" id="wo">Work order: Computer Lab Disconnected</p>
+      <p class="wo" id="notice" hidden></p>
+    </div>
+    <div class="ctl">
+    <select id="daySel" class="daysel" aria-label="Choose a day" hidden></select>
+    <div class="tabs" role="tablist" aria-label="Choose your terminal">
+      <button role="tab" id="tab-linux" aria-selected="true" data-track="linux">Linux</button>
+      <button role="tab" id="tab-ps" aria-selected="false" data-track="ps">PowerShell</button>
+    </div>
+    </div>
+  </header>
+
+  <div class="progress" id="progress" aria-hidden="true"></div>
+  <p class="count" id="count"></p>
+
+  <section class="mission" id="missionBox">
+    <p class="label">Mission</p>
+    <p id="task"></p>
+  </section>
+
+  <section class="term linux" id="term" aria-label="Practice terminal">
+    <div class="bar"><span class="dots"><b></b><b></b><b></b></span><span id="termTitle"></span></div>
+    <div class="body" id="body">
+      <form id="form" autocomplete="off">
+        <span class="pr" id="promptSlot"></span>
+        <label for="cmd" style="position:absolute;left:-9999px">Type your command</label>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      </form>
+    </div>
+  </section>
+
+  <div class="coach" id="coach" aria-live="polite"></div>
+  <div class="actions" id="actions"></div>
+
+  <section class="sum" id="summary" hidden></section>
+</main>
+
+<script>
+var DAYS = { d01: { label: 'Day 1 \u00b7 Wed 10/28', date: '2026-10-28', wo: 'Work order: Computer Lab Disconnected', tracks: {
+  linux: {
+    name: 'Linux',
+    cls: 'linux',
+    start: '~',
+    title: function (cwd) { return 'student@' + (this.host || 'kali') + ': ' + cwd; },
+    banner: ['Kali GNU/Linux Rolling \u00b7 station KALI-03 \u00b7 Blue Land', 'Type a command and press Enter.'],
+    notFound: function (c) { return 'bash: ' + c + ': command not found'; },
+    known: 'pwd ls cd mkdir rmdir ip ifconfig ping nslookup dig host cat echo whoami id su touch rm cp mv grep find man head tail wc sort uniq diff hostname uname ss ps traceroute clear date history'.split(' '),
+    screens: [
+      { task: 'You just logged in. Print the directory you are standing in.',
+        accept: [{ re: /^pwd$/ }], answer: 'pwd', hint: 'Three letters. It stands for "print working directory".',
+        out: '/home/student', what: 'where am I?',
+        why: '<code>pwd</code> answers "where am I?" before you touch anything.' },
+      { task: 'List what is in this directory.',
+        accept: [{ re: /^ls( -[a-zA-Z]+)?$/ }], answer: 'ls', hint: 'Two letters, short for "list".',
+        out: 'Desktop  Documents  blueland  notes.txt', what: 'what is here?',
+        why: '<code>ls</code> shows the room you are standing in. You can only walk into a folder whose name you can see.' },
+      { task: 'Walk into the folder named <code>blueland</code>.',
+        accept: [{ re: /^cd (\.\/)?blueland\/?$/ }], answer: 'cd blueland', hint: 'Two words: the command that changes directory, then the folder name.',
+        partial: [{ re: /^cd$/, msg: '<code>cd</code> needs to know where to go. Give it the folder name.' }],
+        out: '', cwd: '~/blueland', what: 'move into a folder',
+        why: 'Notice the prompt changed. The path in it follows you around.' },
+      { task: 'Step back out one level, to where you started.',
+        accept: [{ re: /^cd \.\.\/?$/ }], answer: 'cd ..', hint: 'Same command as before. The place to go is two dots.',
+        partial: [{ re: /^cd ?\.$/, msg: 'One dot means "right here". Two dots mean "the folder above".' }],
+        out: '', cwd: '~', what: 'move up one level',
+        why: '<code>..</code> always means the folder above you.' },
+      { task: 'Build a new directory named <code>cleared</code>.',
+        accept: [{ re: /^mkdir (-p )?(\.\/)?cleared\/?$/ }], answer: 'mkdir cleared', hint: 'Short for "make directory".',
+        out: '', what: 'make a folder',
+        why: '<code>mkdir</code> builds a new room. Nothing prints when it works, which is normal in Linux.' },
+      { task: 'New work order: the lab has no network. Show this station\'s IP addresses.',
+        accept: [
+          { re: /^ip (a|addr|address)( show)?$/ },
+          { re: /^ip -br(ief)? a(ddr)?$/, out: 'lo               UNKNOWN        127.0.0.1/8\neth0             UP             192.168.50.110/24' },
+          { re: /^ifconfig$/, note: '<code>ifconfig</code> works on some systems, but <code>ip addr</code> is the one to learn.',
+            out: 'eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n        inet 192.168.50.110  netmask 255.255.255.0  broadcast 192.168.50.255\n        ether 02:42:ac:11:00:03  txqueuelen 1000  (Ethernet)' }
+        ],
+        answer: 'ip addr', hint: 'The command is <code>ip</code>. It needs a second word for "address".',
+        partial: [{ re: /^ip$/, msg: '<code>ip</code> alone just prints help. It needs a second word for what you want to see.' }],
+        out: '1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 state UNKNOWN\n    inet 127.0.0.1/8 scope host lo\n2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP\n    link/ether 02:42:ac:11:00:03 brd ff:ff:ff:ff:ff:ff\n    inet 192.168.50.110/24 brd 192.168.50.255 scope global dynamic eth0',
+        what: 'show IP addresses',
+        why: 'A real address, and the word <code>dynamic</code> means DHCP handed it out. Not 169.254, so DHCP worked.' },
+      { task: 'The address looks healthy. Now find the <b>default gateway</b>.',
+        accept: [{ re: /^ip (r|route)( show)?$/ }], answer: 'ip route', hint: 'Same <code>ip</code> command, but this time ask for the routes.',
+        out: 'default via 192.168.50.1 dev eth0 proto dhcp metric 100\n192.168.50.0/24 dev eth0 proto kernel scope link src 192.168.50.110', what: 'show the gateway',
+        why: 'The line that starts with <code>default via</code> is your gateway: 192.168.50.1.' },
+      { task: 'Test the gateway (192.168.50.1). Send <b>exactly four</b> pings.',
+        accept: [{ re: /^ping -c ?4 192\.168\.50\.1$/ }, { re: /^ping 192\.168\.50\.1 -c ?4$/ }],
+        answer: 'ping -c 4 192.168.50.1', hint: 'On Linux, ping never stops on its own. One flag, <code>-c</code>, sets the count.',
+        partial: [
+          { re: /^ping 192\.168\.50\.1$/, msg: 'On Linux, ping keeps going until you press Ctrl+C. Add the flag that limits how many to send.' },
+          { re: /^ping -c ?\d+ 192\.168\.50\.1$/, msg: 'Close. The mission says exactly four.' }
+        ],
+        out: 'PING 192.168.50.1 (192.168.50.1) 56(84) bytes of data.\n64 bytes from 192.168.50.1: icmp_seq=1 ttl=64 time=0.41 ms\n64 bytes from 192.168.50.1: icmp_seq=2 ttl=64 time=0.38 ms\n64 bytes from 192.168.50.1: icmp_seq=3 ttl=64 time=0.40 ms\n64 bytes from 192.168.50.1: icmp_seq=4 ttl=64 time=0.37 ms\n\n--- 192.168.50.1 ping statistics ---\n4 packets transmitted, 4 received, 0% packet loss, time 3051ms',
+        what: 'ping with a count',
+        why: '0% loss. The local path to the gateway works.' },
+      { task: 'The gateway answers. Test beyond it: four pings to the public address <b>1.1.1.1</b>.',
+        accept: [{ re: /^ping -c ?4 1\.1\.1\.1$/ }, { re: /^ping 1\.1\.1\.1 -c ?4$/ }],
+        answer: 'ping -c 4 1.1.1.1', hint: 'Same shape as the last command, new address.',
+        partial: [{ re: /^ping 1\.1\.1\.1$/, msg: 'Add the flag that sends exactly four.' }],
+        out: 'PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.\n64 bytes from 1.1.1.1: icmp_seq=1 ttl=57 time=14.2 ms\n64 bytes from 1.1.1.1: icmp_seq=2 ttl=57 time=13.9 ms\n64 bytes from 1.1.1.1: icmp_seq=3 ttl=57 time=14.1 ms\n64 bytes from 1.1.1.1: icmp_seq=4 ttl=57 time=14.0 ms\n\n--- 1.1.1.1 ping statistics ---\n4 packets transmitted, 4 received, 0% packet loss, time 3005ms',
+        what: 'ping a public IP',
+        why: 'The internet answers by number, so the router, ISP and cable are fine.' },
+      { task: 'Both pings pass, but users say websites will not open <b>by name</b>. Which command tests the name <code>example.com</code>?',
+        accept: [{ re: /^nslookup example\.com$/ }, { re: /^dig example\.com( a)?$/ }, { re: /^host example\.com$/ }],
+        answer: 'nslookup example.com', hint: 'It is a lookup for a name server. <code>dig</code> and <code>host</code> work too.',
+        out: ';; communications error to 192.168.50.1#53: timed out\n;; no servers could be reached', what: 'test name lookup',
+        why: 'Timed out. Numbers work and names do not, so this is a DNS problem, not a cable problem.' },
+      { task: 'The DNS server the router handed out is not answering. Ask a <b>different resolver</b>, 1.1.1.1, for <code>example.com</code>.',
+        accept: [{ re: /^nslookup example\.com 1\.1\.1\.1$/ }, { re: /^dig @1\.1\.1\.1 example\.com$/ }, { re: /^dig example\.com @1\.1\.1\.1$/ }],
+        answer: 'nslookup example.com 1.1.1.1', hint: 'Same lookup as before, with the server you want to ask added at the end.',
+        out: 'Server:\t\t1.1.1.1\nAddress:\t1.1.1.1#53\n\nNon-authoritative answer:\nName:\texample.com\nAddress: 203.0.113.15', what: 'ask another DNS server',
+        why: 'Names resolve through 1.1.1.1. The fault is the DNS server DHCP gave out. You found it with three tests and changed nothing.' }
+    ]
+  },
+  ps: {
+    name: 'PowerShell',
+    cls: 'ps',
+    start: 'C:\\Users\\student',
+    title: function () { return 'Windows PowerShell'; },
+    banner: ['Windows PowerShell', 'Copyright (C) Microsoft Corporation. All rights reserved.', ''],
+    notFound: function (c) { return c + " : The term '" + c + "' is not recognized as the name of a cmdlet, function, script file, or operable program."; },
+    known: 'pwd ls dir cd md mkdir ipconfig ping nslookup whoami hostname cls clear echo cat type get-location get-childitem set-location gl gci sl tracert arp netstat'.split(' '),
+    screens: [
+      { task: 'You just opened PowerShell. Print the folder you are standing in.',
+        accept: [{ re: /^(pwd|get-location|gl)$/i }], answer: 'pwd', hint: 'Three letters. It stands for "print working directory".',
+        out: '\nPath\n----\nC:\\Users\\student\n', what: 'where am I?',
+        why: '<code>pwd</code> works in PowerShell too. Its full name is <code>Get-Location</code>.' },
+      { task: 'List what is in this folder.',
+        accept: [{ re: /^(ls|dir|gci|get-childitem)$/i }], answer: 'ls', hint: 'Two letters. <code>dir</code> works too.',
+        out: '\n    Directory: C:\\Users\\student\n\nMode                 LastWriteTime         Length Name\n----                 -------------         ------ ----\nd-----        10/26/2026   8:02 AM                blueland\nd-r---        10/26/2026   8:02 AM                Documents\n-a----        10/26/2026   8:05 AM            212 notes.txt\n',
+        what: 'what is here?',
+        why: 'PowerShell prints a table. <code>d</code> in the Mode column means directory.' },
+      { task: 'Walk into the folder named <code>blueland</code>.',
+        accept: [{ re: /^(cd|sl|set-location|chdir) (\.\\)?blueland\\?$/i }], answer: 'cd blueland', hint: 'The command that changes directory, then the folder name.',
+        partial: [{ re: /^cd$/i, msg: '<code>cd</code> needs to know where to go. Give it the folder name.' }],
+        out: '', cwd: 'C:\\Users\\student\\blueland', what: 'move into a folder',
+        why: 'The path in the prompt changed. Same <code>cd</code> as Linux.' },
+      { task: 'Step back out one level.',
+        accept: [{ re: /^(cd|sl|set-location|chdir) ?\.\.\\?$/i }], answer: 'cd ..', hint: 'The place to go is two dots.',
+        partial: [{ re: /^cd ?\.$/i, msg: 'One dot means "right here". Two dots mean "the folder above".' }],
+        out: '', cwd: 'C:\\Users\\student', what: 'move up one level',
+        why: '<code>..</code> means the folder above, on Windows and Linux.' },
+      { task: 'Build a new folder named <code>cleared</code>.',
+        accept: [{ re: /^(mkdir|md) (\.\\)?cleared\\?$/i }, { re: /^new-item -itemtype directory (-name )?cleared$/i }], answer: 'mkdir cleared', hint: 'Short for "make directory".',
+        out: '\n    Directory: C:\\Users\\student\n\nMode                 LastWriteTime         Length Name\n----                 -------------         ------ ----\nd-----        10/26/2026   8:09 AM                cleared\n', what: 'make a folder',
+        why: 'PowerShell shows you what it built. Linux says nothing when it works.' },
+      { task: 'New work order: the lab has no network. Show <b>every detail</b> of this PC\'s network settings, not the short version.',
+        accept: [{ re: /^ipconfig ?\/all$/i }], answer: 'ipconfig /all', hint: 'The command is <code>ipconfig</code>. Add the switch that means "all".',
+        partial: [{ re: /^ipconfig$/i, msg: 'That is the short version. Add the switch that shows everything.' }],
+        out: '\nWindows IP Configuration\n\nEthernet adapter Ethernet:\n\n   Physical Address. . . . . . . . . : 02-42-AC-11-00-02\n   DHCP Enabled. . . . . . . . . . . : Yes\n   IPv4 Address. . . . . . . . . . . : 192.168.50.121(Preferred)\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.50.1\n   DHCP Server . . . . . . . . . . . : 192.168.50.1\n   DNS Servers . . . . . . . . . . . : 192.168.50.1\n',
+        what: 'show all network settings',
+        why: 'A real address, a gateway and a DHCP server. Not 169.254, so DHCP worked.' },
+      { task: 'Test the gateway, <b>192.168.50.1</b>.',
+        accept: [{ re: /^ping 192\.168\.50\.1$/i }, { re: /^ping -n ?4 192\.168\.50\.1$/i }], answer: 'ping 192.168.50.1', hint: 'The command is <code>ping</code>, then the address.',
+        out: '\nPinging 192.168.50.1 with 32 bytes of data:\nReply from 192.168.50.1: bytes=32 time<1ms TTL=64\nReply from 192.168.50.1: bytes=32 time<1ms TTL=64\nReply from 192.168.50.1: bytes=32 time<1ms TTL=64\nReply from 192.168.50.1: bytes=32 time<1ms TTL=64\n\nPing statistics for 192.168.50.1:\n    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),\n',
+        what: 'ping the gateway',
+        why: 'Windows sends four pings by itself. Linux keeps going unless you add <code>-c 4</code>.' },
+      { task: 'The gateway answers. Test beyond it: ping the public address <b>1.1.1.1</b>.',
+        accept: [{ re: /^ping 1\.1\.1\.1$/i }, { re: /^ping -n ?4 1\.1\.1\.1$/i }], answer: 'ping 1.1.1.1', hint: 'Same shape as the last command, new address.',
+        out: '\nPinging 1.1.1.1 with 32 bytes of data:\nReply from 1.1.1.1: bytes=32 time=14ms TTL=57\nReply from 1.1.1.1: bytes=32 time=14ms TTL=57\nReply from 1.1.1.1: bytes=32 time=13ms TTL=57\nReply from 1.1.1.1: bytes=32 time=14ms TTL=57\n\nPing statistics for 1.1.1.1:\n    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),\n',
+        what: 'ping a public IP',
+        why: 'The internet answers by number, so the router, ISP and cable are fine.' },
+      { task: 'Both pings pass, but users say websites will not open <b>by name</b>. Which command tests the name <code>example.com</code>?',
+        accept: [{ re: /^nslookup example\.com$/i }], answer: 'nslookup example.com', hint: 'It is a lookup for a name server.',
+        out: 'Server:  UnKnown\nAddress:  192.168.50.1\n\nDNS request timed out.\n    timeout was 2 seconds.\n*** Request to UnKnown timed-out', what: 'test name lookup',
+        why: 'Timed out. Numbers work and names do not, so this is a DNS problem.' },
+      { task: 'The DNS server the router handed out is not answering. Ask a <b>different resolver</b>, 1.1.1.1, for <code>example.com</code>.',
+        accept: [{ re: /^nslookup example\.com 1\.1\.1\.1$/i }], answer: 'nslookup example.com 1.1.1.1', hint: 'Same lookup as before, with the server you want to ask added at the end.',
+        out: 'Server:  one.one.one.one\nAddress:  1.1.1.1\n\nNon-authoritative answer:\nName:    example.com\nAddress:  203.0.113.15\n', what: 'ask another DNS server',
+        why: 'Names resolve through 1.1.1.1. The fault is the DNS server DHCP gave out. Three tests, nothing changed.' }
+    ]
+  }
+} } };
+var TRACKS = DAYS.d01.tracks;
+
+/* ---------- Days 2 to 18: reusable command blocks, one set per meeting ---------- */
+var L1 = DAYS.d01.tracks.linux.screens, P1 = DAYS.d01.tracks.ps.screens;
+var LINUX_EXTRA_KNOWN = 'sudo tail dpkg ufw chmod chown systemctl dhclient nmcli service journalctl less more'.split(' ');
+var PS_EXTRA_KNOWN = 'net getmac icacls test-netconnection tnc select-string get-content gc stop-service get-service get-netadapter get-hotfix get-smbshare get-netfirewallprofile get-nettcpconnection get-localuser get-localgroupmember get-history history systeminfo route get-process findstr measure-object'.split(' ');
+var PING_PARTIAL = [{ re: /^ping 192\.168\.50\.1$/, msg: 'On Linux, ping keeps going until you press Ctrl+C. Add the flag that limits how many to send.' }];
+
+var LX = {
+  pwd: L1[0], ls: L1[1], cd_blueland: L1[2], cd_up: L1[3], mkdir: L1[4],
+  ip_addr: L1[5], ip_route: L1[6], ping_gw: L1[7], ping_pub: L1[8], ns: L1[9], ns_alt: L1[10],
+
+  whoami: { task: 'Who are you logged in as?', accept: [{ re: /^whoami$/ }], answer: 'whoami', hint: 'It is a question: "who am I".',
+    out: 'student', what: 'who am I?', why: 'Always know whose rights you are using before you change anything.' },
+  id: { task: 'Show your user ID and the groups you belong to.', accept: [{ re: /^id$/ }], answer: 'id', hint: 'Two letters.',
+    out: 'uid=1000(student) gid=1000(student) groups=1000(student),24(cdrom),27(sudo)', what: 'user ID and groups',
+    why: '<code>uid=1000</code> is your user number. <code>sudo</code> in the group list means you can run admin commands.' },
+  ip_link: { task: 'Show the MAC address of this station\'s network card. Use the layer 2 view of the interfaces.',
+    accept: [{ re: /^ip (l|link)( show)?$/ }, { re: /^ip (a|addr|address)( show)?$/, note: '<code>ip addr</code> shows the MAC too, but <code>ip link</code> is the layer 2 view.', out: L1[5].out }],
+    answer: 'ip link', hint: 'Same <code>ip</code> command. The second word is the thing you want to see: the link.',
+    partial: [{ re: /^ip$/, msg: '<code>ip</code> alone just prints help. It needs a second word.' }],
+    out: '1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 state UNKNOWN mode DEFAULT\n    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00\n2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP mode DEFAULT\n    link/ether 02:42:ac:11:00:03 brd ff:ff:ff:ff:ff:ff',
+    what: 'show the MAC address', why: 'The MAC is on the <code>link/ether</code> line: 02:42:ac:11:00:03.' },
+  passwd: { task: 'List every account on this machine by reading the file that stores them.', accept: [{ re: /^cat \/etc\/passwd$/ }], answer: 'cat /etc/passwd',
+    hint: 'The file is <code>/etc/passwd</code>. Which command prints a file?',
+    out: 'root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\nstudent:x:1000:1000:Student:/home/student:/bin/bash\nbhelper:x:1002:1002:Backup Helper:/home/bhelper:/bin/bash',
+    what: 'list accounts', why: 'One account per line. Compare this list to the authorized users in the scenario README.' },
+  grep_bash: { task: 'Show only the accounts that can log in. Their lines contain <code>bash</code>.',
+    accept: [{ re: /^grep bash \/etc\/passwd$/ }, { re: /^cat \/etc\/passwd \| grep bash$/, note: 'A pipe works too: <code>cat</code> feeds <code>grep</code>.' }],
+    answer: 'grep bash /etc/passwd', hint: '<code>grep</code>, then the word to look for, then the file.',
+    partial: [{ re: /^cat \/etc\/passwd$/, msg: 'That prints every account. Use the tool that prints only matching lines.' }],
+    out: 'root:x:0:0:root:/root:/bin/bash\nstudent:x:1000:1000:Student:/home/student:/bin/bash\nbhelper:x:1002:1002:Backup Helper:/home/bhelper:/bin/bash',
+    what: 'filter a file with grep', why: '<code>grep</code> prints only the matching lines. Three accounts can log in, and <code>bhelper</code> is not on the README list.' },
+  id_bhelper: { task: 'The README does not list <code>bhelper</code>. Check which groups that account belongs to.', accept: [{ re: /^id bhelper$/ }], answer: 'id bhelper',
+    hint: 'Same command as for yourself, with the account name added.', out: 'uid=1002(bhelper) gid=1002(bhelper) groups=1002(bhelper),27(sudo)',
+    what: 'check another account', why: 'An unauthorized account in the <code>sudo</code> group is a real CyberPatriot finding.' },
+
+  ip_neigh0: { task: 'Show this station\'s ARP table (the neighbor table).', accept: [{ re: /^ip (n|neigh|neighbor|neighbour)( show)?$/ }], answer: 'ip neigh',
+    hint: 'The <code>ip</code> command again. The second word is "neighbor".', out: '192.168.50.20 dev eth0 lladdr 02:42:ac:11:00:14 STALE',
+    what: 'show the ARP table', why: 'Only hosts this station talked to recently are listed. The gateway is missing, so the station has not needed it yet.' },
+  ping_gw1: { task: 'Make the station talk to its gateway, 192.168.50.1. Send <b>one</b> ping.', accept: [{ re: /^ping -c ?1 192\.168\.50\.1$/ }], answer: 'ping -c 1 192.168.50.1',
+    hint: 'Same as before, but the count is 1.', partial: PING_PARTIAL,
+    out: 'PING 192.168.50.1 (192.168.50.1) 56(84) bytes of data.\n64 bytes from 192.168.50.1: icmp_seq=1 ttl=64 time=0.52 ms\n\n--- 192.168.50.1 ping statistics ---\n1 packets transmitted, 1 received, 0% packet loss, time 0ms',
+    what: 'ping once', why: 'To send that ping, the station first had to ask the network "who has 192.168.50.1?" That question is ARP.' },
+  ip_neigh1: { task: 'Look at the neighbor table again. What changed?', accept: [{ re: /^ip (n|neigh|neighbor|neighbour)( show)?$/ }], answer: 'ip neigh',
+    hint: 'Same command as before.', out: '192.168.50.1 dev eth0 lladdr 02:42:ac:11:00:01 REACHABLE\n192.168.50.20 dev eth0 lladdr 02:42:ac:11:00:14 STALE',
+    what: 'check the ARP table again', why: 'The gateway is in the table now: its IP address mapped to its MAC address.' },
+
+  ip_brief: { task: 'Show a one-line-per-interface summary of the addresses.', accept: [{ re: /^ip -br(ief)? a(ddr)?$/ }], answer: 'ip -br addr',
+    hint: 'The <code>ip addr</code> command with the brief flag, <code>-br</code>.', out: 'lo               UNKNOWN        127.0.0.1/8\neth0             UP             192.168.50.110/24',
+    what: 'one-line address summary', why: 'A compact view: interface, state and address with the prefix length.' },
+  ip_route_net: { task: 'Which network is this station on? Show the routes and find the line ending in <code>/24</code>.', accept: [{ re: /^ip (r|route)( show)?$/ }], answer: 'ip route',
+    hint: 'The <code>ip</code> command, second word "route".', out: L1[6].out, what: 'find the local network',
+    why: 'The <code>192.168.50.0/24</code> line is this station\'s network. Hosts .1 to .254 are on the same local network.' },
+  hostname: { task: 'What is this station called?', accept: [{ re: /^hostname$/ }], answer: 'hostname', hint: 'One word, the same as the thing it shows.',
+    out: '{host}', what: 'show the hostname', why: 'The hostname is the first column of any as-built row.' },
+  uname_a: { task: 'Show the kernel name and version for this station.',
+    accept: [{ re: /^uname -a$/ }, { re: /^uname$/, out: 'Linux', note: 'Plain <code>uname</code> only prints the kernel name. Add <code>-a</code> for everything.' }],
+    answer: 'uname -a', hint: '<code>uname</code> with the "all" flag.', out: 'Linux {host} 6.1.0 #1 SMP x86_64 GNU/Linux', what: 'kernel version',
+    why: 'Kernel name, hostname, version and hardware in one line.' },
+  os_release: { task: 'Show which operating system and version this station runs. It is in a file, <code>/etc/os-release</code>.', accept: [{ re: /^cat \/etc\/os-release$/ }], answer: 'cat /etc/os-release',
+    hint: 'Which command prints a file?', out: 'PRETTY_NAME="Ubuntu 22.04.4 LTS"\nNAME="Ubuntu"\nVERSION_ID="22.04"\nVERSION="22.04.4 LTS (Jammy Jellyfish)"\nID=ubuntu',
+    what: 'show the OS version', why: 'Ubuntu 22.04.4. Compare that to what the scenario README says must be current.' },
+  dpkg_ssh: { task: 'Is an SSH package installed? List installed packages and use a <b>pipe</b> to keep only the lines containing <code>ssh</code>.',
+    accept: [{ re: /^dpkg -l \| grep -i ssh$/ }, { re: /^dpkg -l \| grep ssh$/ }], answer: 'dpkg -l | grep ssh', hint: 'List the packages with <code>dpkg -l</code>, then <code>|</code> into <code>grep</code>.',
+    partial: [{ re: /^dpkg -l$/, msg: 'That prints every package. Pipe it into a filter.' }],
+    out: 'ii  openssh-client  1:8.9p1-3ubuntu0.7  amd64  secure shell (SSH) client\nii  openssh-server  1:8.9p1-3ubuntu0.7  amd64  secure shell (SSH) server',
+    what: 'filter output with a pipe', why: 'The <code>|</code> sends one command\'s output into the next. <code>grep</code> keeps only the lines with "ssh".' },
+
+  ls_l_media: { task: 'Show the files here with their permissions.', accept: [{ re: /^ls -l[a-z]*$/ }], answer: 'ls -l', hint: '<code>ls</code> with the "long" flag.',
+    partial: [{ re: /^ls$/, msg: 'Plain <code>ls</code> only shows names. Add the flag for the long format.' }],
+    out: 'total 8\ndrwxr-xr-x 2 student student 4096 Nov 13 08:02 media\n-rw-r--r-- 1 student student  212 Nov 13 08:05 notes.txt', what: 'show permissions',
+    why: 'Read <code>drwxr-xr-x</code> left to right: d is a directory, then owner <code>rwx</code>, group <code>r-x</code>, others <code>r-x</code>. Right now anyone can read and enter <code>media</code>.' },
+  chmod_750: { task: 'The <code>media</code> folder should be private: owner full access, group read and enter, others nothing. Set it with <code>chmod</code>.',
+    accept: [{ re: /^chmod (750|o-rx|o-rwx) media\/?$/ }], answer: 'chmod 750 media', hint: 'Three digits: owner, group, others. 7 is everything, 5 is read and enter, 0 is nothing.',
+    partial: [{ re: /^chmod 777 media\/?$/, msg: '777 gives <b>everyone</b> full control. That is the opposite of private.' }, { re: /^chmod \d{3} media\/?$/, msg: 'Not quite. Owner 7, group 5, others 0.' }],
+    out: '', what: 'change permissions', why: 'Each digit is a sum: read 4, write 2, execute 1. So 7 is rwx, 5 is r-x, 0 is nothing.' },
+  ls_l_media_after: { task: 'Check your work: show the permissions again.', accept: [{ re: /^ls -l[a-z]*$/ }], answer: 'ls -l', hint: 'Same command as before.',
+    out: 'total 8\ndrwxr-x--- 2 student student 4096 Nov 13 08:02 media\n-rw-r--r-- 1 student student  212 Nov 13 08:05 notes.txt', what: 'verify permissions',
+    why: 'Others now show <code>---</code>. The folder is private to the owner and group.' },
+  ufw_status0: { task: 'Check the firewall state before you change anything.', accept: [{ re: /^sudo ufw status$/ }], answer: 'sudo ufw status', hint: 'It is an admin command, so it starts with <code>sudo</code>.',
+    partial: [{ re: /^ufw status$/, msg: 'The firewall tool needs admin rights. Put <code>sudo</code> in front.' }], out: 'Status: inactive', what: 'check the firewall',
+    why: 'Inactive means nothing is filtering traffic yet. Always look before you change.' },
+  ufw_enable: { task: 'Turn the firewall on.', accept: [{ re: /^sudo ufw enable$/ }], answer: 'sudo ufw enable', hint: '<code>sudo ufw</code> and the word that turns it on.',
+    out: 'Command may disrupt existing ssh connections. Proceed with operation (y|n)? y\nFirewall is active and enabled on system startup', what: 'enable the firewall',
+    why: 'Default is deny incoming, allow outgoing. Any service that must keep working now needs an allow rule. (Over a remote session, allow ssh first.)' },
+  ufw_allow445: { task: 'The media server shares files over SMB, port <b>445</b>. Allow only that port.', accept: [{ re: /^sudo ufw allow 445(\/tcp)?$/ }], answer: 'sudo ufw allow 445/tcp',
+    hint: '<code>sudo ufw allow</code>, then the port.', out: 'Rule added\nRule added (v6)', what: 'allow one port', why: 'One service, one rule. Everything else stays blocked.' },
+  ufw_status1: { task: 'Verify: show the firewall rules.', accept: [{ re: /^sudo ufw status$/ }], answer: 'sudo ufw status', hint: 'Same command as before.',
+    partial: [{ re: /^ufw status$/, msg: 'Put <code>sudo</code> in front.' }],
+    out: 'Status: active\n\nTo                         Action      From\n--                         ------      ----\n445/tcp                    ALLOW       Anywhere\n445/tcp (v6)               ALLOW       Anywhere (v6)',
+    what: 'verify the rules', why: 'Port 445 is allowed. Now test from a second device that the share still works. Verification includes what should still work.' },
+  ls_l_777: { task: 'An AI assistant told someone to "fix the share" with <code>chmod 777 media</code>. They did. Show the permissions to see what that did.', accept: [{ re: /^ls -l[a-z]*$/ }], answer: 'ls -l',
+    hint: '<code>ls</code> with the long-format flag.', partial: [{ re: /^ls$/, msg: 'Plain <code>ls</code> hides the permissions. Add the long-format flag.' }],
+    out: 'total 8\ndrwxrwxrwx 2 student student 4096 Nov 13 08:02 media\n-rw-r--r-- 1 student student  212 Nov 13 08:05 notes.txt', what: 'spot a bad fix',
+    why: '<code>rwx</code> for others means any user can change or delete this folder. 777 "fixes" access problems by removing all protection.' },
+  ls_l_audit: { task: 'Audit this folder. Show the permissions and read the last three characters of each line: the "others" column.', accept: [{ re: /^ls -l[a-z]*$/ }], answer: 'ls -l',
+    hint: '<code>ls</code> with the long-format flag.', partial: [{ re: /^ls$/, msg: 'Plain <code>ls</code> hides the permissions. Add the long-format flag.' }],
+    out: 'total 12\ndrwxr-x--- 2 student student 4096 Nov 13 08:02 media\n-rw-rw-rw- 1 student student   88 Nov 18 09:14 notes.txt\n-rw------- 1 student student  301 Nov 18 09:10 passwords.txt', what: 'audit permissions',
+    why: '<code>notes.txt</code> ends in <code>rw-</code>, so any user can edit it. <code>passwords.txt</code> ends in <code>---</code>, so it is private.' },
+  chmod_ow: { task: 'Least privilege: remove write access for <b>others</b> on <code>notes.txt</code>, and change nothing else.', accept: [{ re: /^chmod (o-w|664) notes\.txt$/ }], answer: 'chmod o-w notes.txt',
+    hint: '<code>chmod</code>, then who (others), minus, what (write), then the file.',
+    partial: [{ re: /^chmod .+ notes\.txt$/, msg: 'That changes more than the mission asks. Only remove write for <b>others</b>.' }], out: '', what: 'remove write for others',
+    why: 'Others do not need to edit this file, so they lose that right.' },
+  ls_l_audit_after: { task: 'Verify the change.', accept: [{ re: /^ls -l[a-z]*$/ }], answer: 'ls -l', hint: 'Same command as before.',
+    out: 'total 12\ndrwxr-x--- 2 student student 4096 Nov 13 08:02 media\n-rw-rw-r-- 1 student student   88 Nov 18 09:14 notes.txt\n-rw------- 1 student student  301 Nov 18 09:10 passwords.txt', what: 'verify the change',
+    why: 'The others column on <code>notes.txt</code> is now <code>r--</code>.' },
+
+  ss_tuln: { task: 'List the services listening for connections: TCP and UDP, listening only, with numbers instead of names.',
+    accept: [{ re: /^(sudo )?ss -(?=[a-z]*t)(?=[a-z]*u)(?=[a-z]*l)(?=[a-z]*n)[tulnp]{4,5}$/ }], answer: 'ss -tuln', hint: 'The command is <code>ss</code>. The flags spell t, u, l, n.',
+    partial: [{ re: /^ss$/, msg: 'Plain <code>ss</code> lists connections, not listeners. Add the flags for tcp, udp, listening and numeric.' }],
+    out: 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port\nudp   UNCONN 0      0      127.0.0.53%lo:53    0.0.0.0:*\nudp   UNCONN 0      0            0.0.0.0:68    0.0.0.0:*\ntcp   LISTEN 0      128          0.0.0.0:22    0.0.0.0:*\ntcp   LISTEN 0      32           0.0.0.0:21    0.0.0.0:*\ntcp   LISTEN 0      4096   127.0.0.53%lo:53    0.0.0.0:*',
+    what: 'list listening ports', why: 'Each <code>LISTEN</code> line is a service waiting for connections: 22 is SSH, 21 is FTP, 53 is DNS. Read the README before stopping any of them.' },
+  ps_grep: { task: 'Which process owns port 21? Show all processes and use a pipe to keep only the lines containing <code>vsftpd</code>.',
+    accept: [{ re: /^ps aux \| grep vsftpd$/ }], answer: 'ps aux | grep vsftpd', hint: '<code>ps aux</code> lists everything. Pipe it into <code>grep</code>.',
+    partial: [{ re: /^ps aux$/, msg: 'That lists everything. Pipe it into <code>grep</code> to keep just vsftpd.' }],
+    out: 'root        1042  0.0  0.1  12345  3000 ?        Ss   08:01   0:00 /usr/sbin/vsftpd /etc/vsftpd.conf\nstudent     3120  0.0  0.0   9000   700 pts/0    S+   08:10   0:00 grep vsftpd',
+    what: 'find a process', why: 'There is the FTP server, running as root. The second line is just your own <code>grep</code>.' },
+  ss_save: { task: 'Save the listening ports to a file named <code>ports.txt</code> as evidence for your change record.', accept: [{ re: /^ss -tuln ?> ?ports\.txt$/ }], answer: 'ss -tuln > ports.txt',
+    hint: 'Same <code>ss</code> command, then <code>&gt;</code> and the file name.', out: '', what: 'save output to a file', why: 'The <code>&gt;</code> sends output into a file instead of the screen. Evidence for the Runbook.' },
+  stop_ftp: { task: 'The README says FTP is not needed. Stop <b>and</b> disable <code>vsftpd</code> in one command.',
+    accept: [{ re: /^sudo systemctl disable --now vsftpd$/, out: 'Synchronizing state of vsftpd.service with SysV service script...\nRemoved /etc/systemd/system/multi-user.target.wants/vsftpd.service.' },
+      { re: /^sudo systemctl stop vsftpd$/, out: '', note: 'That stops it now, but it would start again at boot. <code>disable --now</code> does both.' }],
+    answer: 'sudo systemctl disable --now vsftpd', hint: '<code>sudo systemctl</code>, the word <code>disable</code> with the flag <code>--now</code>, then the service name.',
+    partial: [{ re: /^systemctl /, msg: 'Changing services needs admin rights. Put <code>sudo</code> in front.' }], out: 'Synchronizing state of vsftpd.service with SysV service script...\nRemoved /etc/systemd/system/multi-user.target.wants/vsftpd.service.',
+    what: 'stop and disable a service', why: 'Authorized, one change, recorded. Now verify it worked and that nothing else broke.' },
+  ss_after: { task: 'Verify: list the listening ports again.', accept: [{ re: /^(sudo )?ss -(?=[a-z]*t)(?=[a-z]*u)(?=[a-z]*l)(?=[a-z]*n)[tulnp]{4,5}$/ }], answer: 'ss -tuln', hint: 'Same command as before.',
+    out: 'Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:Port\nudp   UNCONN 0      0      127.0.0.53%lo:53    0.0.0.0:*\nudp   UNCONN 0      0            0.0.0.0:68    0.0.0.0:*\ntcp   LISTEN 0      128          0.0.0.0:22    0.0.0.0:*\ntcp   LISTEN 0      4096   127.0.0.53%lo:53    0.0.0.0:*',
+    what: 'verify the change', why: 'Port 21 is gone and SSH (22) still listens. Confirm the machine still does its job, then write the change record.' },
+
+  ip_addr_apipa: { task: 'Scenario B: users cannot reach anything. Show this station\'s IP addresses.',
+    accept: [{ re: /^ip (a|addr|address)( show)?$/ }], answer: 'ip addr', hint: 'The <code>ip</code> command, second word "addr".',
+    out: '1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 state UNKNOWN\n    inet 127.0.0.1/8 scope host lo\n2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP\n    link/ether 02:42:ac:11:00:03 brd ff:ff:ff:ff:ff:ff\n    inet 169.254.37.118/16 brd 169.254.255.255 scope link eth0',
+    what: 'spot an APIPA address', why: '169.254.x.x is an address the station gave itself because DHCP never answered. It does not prove the switch is broken.' },
+  ip_route_nodef: { task: 'Is there a default gateway? Show the routes.', accept: [{ re: /^ip (r|route)( show)?$/ }], answer: 'ip route', hint: 'The <code>ip</code> command, second word "route".',
+    out: '169.254.0.0/16 dev eth0 scope link metric 1000', what: 'check for a gateway', why: 'There is no <code>default via</code> line, so this station has no gateway at all.' },
+  ping_gw_fail: { task: 'Try the gateway anyway: send exactly four pings to 192.168.50.1.', accept: [{ re: /^ping -c ?4 192\.168\.50\.1$/ }, { re: /^ping 192\.168\.50\.1 -c ?4$/ }],
+    answer: 'ping -c 4 192.168.50.1', hint: 'Same command as in the first set.', partial: PING_PARTIAL,
+    out: 'ping: connect: Network is unreachable', what: 'ping a gateway that is unreachable', why: '"Unreachable" means the packets never left. With no route, nothing can get out. Next, prove the station itself is healthy.' },
+  ping_lo: { task: 'Prove this station\'s own network stack works: send two pings to the loopback address <code>127.0.0.1</code>.', accept: [{ re: /^ping -c ?2 127\.0\.0\.1$/ }], answer: 'ping -c 2 127.0.0.1',
+    hint: 'The loopback address, and a count of two.', partial: [{ re: /^ping 127\.0\.0\.1$/, msg: 'Add the flag that limits the count to two.' }],
+    out: 'PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.\n64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.03 ms\n64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.04 ms\n\n--- 127.0.0.1 ping statistics ---\n2 packets transmitted, 2 received, 0% packet loss, time 1021ms',
+    what: 'test the loopback', why: 'Loopback works, so the station\'s own TCP/IP is fine. The fault is between the station and DHCP, not inside the station.' },
+  dhclient: { task: 'Ask DHCP again. Request a new lease on <code>eth0</code>, with verbose output so you can watch the exchange. (Only on a station you are sitting at.)',
+    accept: [{ re: /^sudo dhclient( -v)? eth0$/ }], answer: 'sudo dhclient -v eth0', hint: 'The DHCP client is <code>dhclient</code>. It needs <code>sudo</code>, the verbose flag and the interface.',
+    partial: [{ re: /^dhclient/, msg: 'Changing network settings needs admin rights. Put <code>sudo</code> in front.' }],
+    out: 'Internet Systems Consortium DHCP Client 4.4.3\nListening on LPF/eth0/02:42:ac:11:00:03\nDHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 3\nDHCPOFFER of 192.168.50.110 from 192.168.50.1\nDHCPREQUEST for 192.168.50.110 on eth0 to 255.255.255.255 port 67\nDHCPACK of 192.168.50.110 from 192.168.50.1\nbound to 192.168.50.110 -- renewal in 3490 seconds.',
+    what: 'renew a DHCP lease', why: 'You just watched DORA: Discover, Offer, Request, Acknowledge. Commands for this vary by Linux version.' },
+
+  tail_auth: { task: 'Show the last 5 lines of the authentication log, <code>/var/log/auth.log</code>.',
+    accept: [{ re: /^tail -n ?5 \/var\/log\/auth\.log$/ }, { re: /^tail -5 \/var\/log\/auth\.log$/ }], answer: 'tail -n 5 /var/log/auth.log', hint: '<code>tail</code> shows the end of a file. The flag <code>-n 5</code> asks for five lines.',
+    partial: [{ re: /^cat \/var\/log\/auth\.log$/, msg: 'That prints the whole log. You only need the end.' }, { re: /^tail \/var\/log\/auth\.log$/, msg: 'Close. <code>tail</code> shows 10 lines by default. Ask for 5.' }],
+    out: 'Dec  4 08:41:02 cp-ubuntu sshd[2210]: Failed password for invalid user admin from 203.0.113.50 port 51022 ssh2\nDec  4 08:41:05 cp-ubuntu sshd[2210]: Failed password for invalid user admin from 203.0.113.50 port 51022 ssh2\nDec  4 08:41:09 cp-ubuntu sshd[2214]: Failed password for root from 203.0.113.50 port 51040 ssh2\nDec  4 08:44:31 cp-ubuntu sshd[2230]: Accepted password for student from 192.168.50.20 port 40322 ssh2\nDec  4 08:51:12 cp-ubuntu useradd[2255]: new user: name=bhelper, UID=1002, GID=1002, home=/home/bhelper, shell=/bin/bash',
+    what: 'read the end of a log', why: 'Five lines tell a story: repeated failures from one outside address, then a new account appears.' },
+  grep_failed: { task: 'Find every failed password attempt in the log.', accept: [{ re: /^grep ["']?Failed( password)?["']? \/var\/log\/auth\.log$/ }], answer: 'grep "Failed password" /var/log/auth.log',
+    hint: '<code>grep</code>, the text to find, then the file.', partial: [{ re: /^cat \/var\/log\/auth\.log$/, msg: 'That prints everything. Filter for just the failed attempts.' }],
+    out: 'Dec  4 08:40:58 cp-ubuntu sshd[2205]: Failed password for invalid user admin from 203.0.113.50 port 51018 ssh2\nDec  4 08:41:02 cp-ubuntu sshd[2210]: Failed password for invalid user admin from 203.0.113.50 port 51022 ssh2\nDec  4 08:41:05 cp-ubuntu sshd[2210]: Failed password for invalid user admin from 203.0.113.50 port 51022 ssh2\nDec  4 08:41:09 cp-ubuntu sshd[2214]: Failed password for root from 203.0.113.50 port 51040 ssh2',
+    what: 'filter a log with grep', why: 'Same source address, many tries: that is a pattern worth a finding.' },
+  grep_count: { task: 'How many failed attempts are there? Have <code>grep</code> count them instead of printing them.', accept: [{ re: /^grep -c ["']?Failed( password)?["']? \/var\/log\/auth\.log$/ }],
+    answer: 'grep -c "Failed password" /var/log/auth.log', hint: 'Same search with the count flag <code>-c</code>.', out: '14', what: 'count matches', why: '<code>-c</code> counts matching lines: 14 failed attempts.' },
+  wc_l: { task: 'How many lines long is the whole log?', accept: [{ re: /^wc -l \/var\/log\/auth\.log$/ }, { re: /^wc -l < \/var\/log\/auth\.log$/, out: '212' }], answer: 'wc -l /var/log/auth.log',
+    hint: '<code>wc</code> is "word count". The flag <code>-l</code> counts lines.', out: '212 /var/log/auth.log', what: 'count lines', why: '212 lines in total, 14 of them failures.' },
+  find_evidence: { task: 'A log named <code>incident.log</code> is somewhere on this system. Find it.', accept: [{ re: /^find \/ -name ["']?incident\.log["']?( 2>\/dev\/null)?$/ }], answer: 'find / -name incident.log',
+    hint: '<code>find</code>, where to start looking (<code>/</code> is everywhere), <code>-name</code>, then the file name.', partial: [{ re: /^find incident\.log$/, msg: '<code>find</code> needs a starting place and <code>-name</code>.' }],
+    out: '/home/student/evidence/incident.log', what: 'search the whole system', why: '<code>find</code> searches the whole system for a name. <code>grep</code> searches inside a file you already know.' },
+  cat_evidence: { task: 'Read the file you just found: <code>/home/student/evidence/incident.log</code>.', accept: [{ re: /^cat \/home\/student\/evidence\/incident\.log$/ }], answer: 'cat /home/student/evidence/incident.log',
+    hint: 'Which command prints a whole file?', out: 'Dec  3 22:14:07 cp-ubuntu sudo: bhelper : COMMAND=/usr/bin/rm /var/log/syslog.1\nDec  3 22:14:15 cp-ubuntu sshd[2301]: Accepted password for bhelper from 198.51.100.7 port 60112 ssh2',
+    what: 'read a file', why: 'Read before you trust it. A log tells you what happened and who did it.' },
+  history: { task: 'Retrace your steps: show every command you have run this session.', accept: [{ re: /^history$/ }], answer: 'history', hint: 'The word for "what happened before".',
+    out: '  1  find / -name incident.log\n  2  cat /home/student/evidence/incident.log\n  3  grep "Failed password" /var/log/auth.log\n  4  history', what: 'show command history', why: '<code>history</code> is your own log. It is also how an investigator reads what someone else typed.' }
+};
+
+var PX = {
+  pwd: P1[0], ls: P1[1], cd: P1[2], cd_up: P1[3], mkdir: P1[4], ipconfig_all: P1[5], ping_gw: P1[6], ping_pub: P1[7], nslookup: P1[8], nslookup_alt: P1[9],
+
+  whoami: { task: 'Who are you logged in as?', accept: [{ re: /^whoami$/i }], answer: 'whoami', hint: 'It is a question: "who am I".', out: 'blue-land-02\\student', what: 'who am I?', why: 'Always know whose rights you are using before you change anything.' },
+  net_user: { task: 'List the local user accounts on this PC.',
+    accept: [{ re: /^net user$/i }, { re: /^get-localuser$/i, out: '\nName               Enabled Description\n----               ------- -----------\nAdministrator      False   Built-in account for administering the computer\nbhelper            True    Backup Helper\nDefaultAccount     False   A user account managed by the system.\nGuest              False   Built-in account for guest access\nstudent            True    \n' }],
+    answer: 'net user', hint: '<code>net user</code>. <code>Get-LocalUser</code> works too.',
+    out: '\nUser accounts for \\\\BLUE-LAND-02\n\n-------------------------------------------------------------------------------\nAdministrator            bhelper                  DefaultAccount\nGuest                    student                  WDAGUtilityAccount\nThe command completed successfully.\n',
+    what: 'list accounts', why: 'Compare this list to the authorized users in the scenario README. <code>bhelper</code> is not on it.' },
+  getmac: { task: 'Show this PC\'s MAC address.', accept: [{ re: /^getmac$/i }, { re: /^ipconfig ?\/all$/i, note: '<code>ipconfig /all</code> shows it too, but <code>getmac</code> is the short way.', out: P1[5].out }], answer: 'getmac',
+    hint: 'A short command: "get" plus the thing you want.', out: '\nPhysical Address    Transport Name\n=================== ==========================================================\n02-42-AC-11-00-02   \\Device\\Tcpip_{6A1B0C2D-0000-4E4E-9A55-123456789ABC}\n',
+    what: 'show the MAC address', why: 'The MAC is 02-42-AC-11-00-02. Windows writes it with dashes, Linux with colons.' },
+  net_user_bhelper: { task: 'The README does not list <code>bhelper</code>. Show the details of that account.', accept: [{ re: /^net user bhelper$/i }], answer: 'net user bhelper', hint: 'The same command as before, with the account name added.',
+    out: '\nUser name                    bhelper\nFull Name                    Backup Helper\nAccount active               Yes\nLocal Group Memberships      *Administrators       *Users\nThe command completed successfully.\n',
+    what: 'check one account', why: 'An unauthorized account in <b>Administrators</b> is a real CyberPatriot finding.' },
+  local_admins: { task: 'List the members of the local <b>Administrators</b> group.',
+    accept: [{ re: /^get-localgroupmember (-group )?administrators$/i }, { re: /^net localgroup administrators$/i, out: '\nAlias name     administrators\nMembers\n\n-------------------------------------------------------------------------------\nAdministrator\nbhelper\nstudent\nThe command completed successfully.\n' }],
+    answer: 'Get-LocalGroupMember Administrators', hint: '<code>Get-LocalGroupMember</code>, then the group name. <code>net localgroup administrators</code> works too.',
+    out: '\nObjectClass Name                      PrincipalSource\n----------- ----                      ---------------\nUser        BLUE-LAND-02\\Administrator Local\nUser        BLUE-LAND-02\\bhelper       Local\nUser        BLUE-LAND-02\\student       Local\n',
+    what: 'list administrators', why: 'Three admins. Least privilege says only the ones the README names should be there.' },
+
+  arp_a0: { task: 'Show this PC\'s ARP table.', accept: [{ re: /^arp -a$/i }], answer: 'arp -a', hint: '<code>arp</code> with the flag that means "all".',
+    out: '\nInterface: 192.168.50.121 --- 0x4\n  Internet Address      Physical Address      Type\n  192.168.50.20         02-42-ac-11-00-14     dynamic\n  192.168.50.255        ff-ff-ff-ff-ff-ff     static\n',
+    what: 'show the ARP table', why: 'Only hosts this PC talked to recently are listed. The gateway is missing.' },
+  arp_a1: { task: 'Look at the ARP table again. What changed?', accept: [{ re: /^arp -a$/i }], answer: 'arp -a', hint: 'Same command as before.',
+    out: '\nInterface: 192.168.50.121 --- 0x4\n  Internet Address      Physical Address      Type\n  192.168.50.1          02-42-ac-11-00-01     dynamic\n  192.168.50.20         02-42-ac-11-00-14     dynamic\n  192.168.50.255        ff-ff-ff-ff-ff-ff     static\n',
+    what: 'check the ARP table again', why: 'The gateway is listed now: its IP address mapped to its MAC address.' },
+  ipconfig: { task: 'Show this PC\'s basic network settings: the short version.', accept: [{ re: /^ipconfig$/i }], answer: 'ipconfig', hint: 'One word, no switches.',
+    out: '\nWindows IP Configuration\n\nEthernet adapter Ethernet:\n\n   Connection-specific DNS Suffix  . :\n   IPv4 Address. . . . . . . . . . . : 192.168.50.121\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.50.1\n',
+    what: 'short network settings', why: 'Address, mask and gateway at a glance. Add <code>/all</code> for DHCP, DNS and the MAC.' },
+  hostname: { task: 'What is this PC called?', accept: [{ re: /^hostname$/i }], answer: 'hostname', hint: 'One word, the same as the thing it shows.', out: 'BLUE-LAND-02', what: 'show the hostname', why: 'The hostname is the first column of any as-built row.' },
+  ipconfig_dns: { task: 'Show only the DNS lines from the full network details. Pipe <code>ipconfig /all</code> into a filter for <code>DNS</code>.',
+    accept: [{ re: /^ipconfig ?\/all ?\| ?(findstr|select-string) (\/i )?dns$/i }], answer: 'ipconfig /all | findstr DNS', hint: 'The full command, then <code>|</code>, then <code>findstr</code> and the word to keep.',
+    partial: [{ re: /^ipconfig ?\/all$/i, msg: 'That prints everything. Pipe it into a filter.' }], out: '   Connection-specific DNS Suffix  . : lab.local\n   DNS Servers . . . . . . . . . . . : 192.168.50.1',
+    what: 'filter output with a pipe', why: 'The <code>|</code> sends one command\'s output into the next. <code>findstr</code> keeps only lines with the word you give it.' },
+  get_netadapter: { task: 'List the network adapters. Which medium is each using?', accept: [{ re: /^get-netadapter$/i }], answer: 'Get-NetAdapter', hint: '"Get" the net adapters.',
+    out: '\nName     InterfaceDescription            ifIndex Status       MacAddress         LinkSpeed\n----     --------------------            ------- ------       ----------         ---------\nEthernet Intel(R) Ethernet Connection         4  Up           02-42-AC-11-00-02  1 Gbps\nWi-Fi    Intel(R) Wi-Fi 6 AX201               7  Disconnected 38-DE-AD-00-12-34  0 bps\n',
+    what: 'list adapters', why: 'Ethernet is up at 1 Gbps. Wi-Fi is present but disconnected. That is wired media.' },
+  get_hotfix: { task: 'List the Windows updates installed on this PC.', accept: [{ re: /^get-hotfix$/i }], answer: 'Get-HotFix', hint: '"Get" the hotfixes.',
+    out: '\nSource        Description      HotFixID      InstalledBy          InstalledOn\n------        -----------      --------      -----------          -----------\nBLUE-LAND-02  Security Update  KB5034441     NT AUTHORITY\\SYSTEM  1/9/2026\nBLUE-LAND-02  Update           KB5035853     NT AUTHORITY\\SYSTEM  3/12/2026\n',
+    what: 'list installed updates', why: 'A patch inventory. Compare the newest update to what the scenario README requires.' },
+
+  icacls_media: { task: 'Show the permissions on the folder <code>media</code>.', accept: [{ re: /^icacls (\.\\)?media\\?$/i }], answer: 'icacls media', hint: 'The command for access control lists, then the folder.',
+    out: 'media BUILTIN\\Administrators:(OI)(CI)(F)\n      NT AUTHORITY\\SYSTEM:(OI)(CI)(F)\n      BLUE-LAND-02\\student:(OI)(CI)(F)\n      BUILTIN\\Users:(OI)(CI)(RX)\n\nSuccessfully processed 1 files; Failed processing 0 files\n',
+    what: 'show folder permissions', why: '<code>F</code> is full control, <code>RX</code> is read and execute. Users can read, which is right for a media share.' },
+  get_smbshare: { task: 'List the folders this PC shares over the network.', accept: [{ re: /^get-smbshare$/i }], answer: 'Get-SmbShare', hint: '"Get" the SMB shares.',
+    out: '\nName   ScopeName Path              Description\n----   ---------- ----              -----------\nIPC$   *                            Remote IPC\nMedia  *          C:\\Shares\\Media\n', what: 'list shares', why: '<code>Media</code> is shared. SMB is the file-sharing protocol on port 445.' },
+  fw_profile: { task: 'Check whether the firewall is on for each network profile. Show only the <b>Name</b> and <b>Enabled</b> columns.',
+    accept: [{ re: /^get-netfirewallprofile \| select(-object)? name ?, ?enabled$/i }], answer: 'Get-NetFirewallProfile | Select-Object Name, Enabled', hint: 'Pipe <code>Get-NetFirewallProfile</code> into <code>Select-Object</code> with the two column names.',
+    partial: [{ re: /^get-netfirewallprofile$/i, msg: 'That prints dozens of lines. Pipe it into <code>Select-Object Name, Enabled</code> to see only what you need.' }],
+    out: '\nName    Enabled\n----    -------\nDomain     True\nPrivate    True\nPublic     True\n', what: 'check the firewall', why: 'All three profiles are on. Look before you change.' },
+  test_netconn: { task: 'Verify from a client: can this PC reach the media server (192.168.50.20) on SMB port <b>445</b>?',
+    accept: [{ re: /^(test-netconnection|tnc) (-computername )?192\.168\.50\.20 -port 445$/i }], answer: 'Test-NetConnection 192.168.50.20 -Port 445', hint: '<code>Test-NetConnection</code>, the address, then <code>-Port</code> and the number.',
+    out: '\nComputerName     : 192.168.50.20\nRemoteAddress    : 192.168.50.20\nRemotePort       : 445\nInterfaceAlias   : Ethernet\nTcpTestSucceeded : True\n', what: 'test one port from a client', why: '<code>TcpTestSucceeded : True</code>. The share is reachable. Verification means testing what should work, not only what should be blocked.' },
+  icacls_everyone: { task: 'An AI assistant told someone to "fix the share" by giving <b>Everyone</b> full control of <code>media</code>. They did. Show the permissions to see it.', accept: [{ re: /^icacls (\.\\)?media\\?$/i }], answer: 'icacls media',
+    hint: 'The command for access control lists, then the folder.',
+    out: 'media Everyone:(OI)(CI)(F)\n      BUILTIN\\Administrators:(OI)(CI)(F)\n      NT AUTHORITY\\SYSTEM:(OI)(CI)(F)\n      BUILTIN\\Users:(OI)(CI)(RX)\n\nSuccessfully processed 1 files; Failed processing 0 files\n',
+    what: 'spot a bad fix', why: '<code>Everyone:(F)</code> means anyone can change or delete this folder. That "fix" removed the protection instead of solving the problem.' },
+  icacls_fix: { task: 'Remove the <b>Everyone</b> entry from <code>media</code>.', accept: [{ re: /^icacls (\.\\)?media\\? \/remove(:g)? everyone$/i }], answer: 'icacls media /remove Everyone',
+    hint: 'The same command with <code>/remove</code> and the name to take away.', out: 'processed file: media\nSuccessfully processed 1 files; Failed processing 0 files\n', what: 'remove a permission', why: 'Least privilege restored. Check it with the same command.' },
+  netstat_ano: { task: 'List network connections and listening ports with the owning process IDs.', accept: [{ re: /^netstat -ano$/i }], answer: 'netstat -ano', hint: '<code>netstat</code> with the flags a, n, o.',
+    out: '\nActive Connections\n\n  Proto  Local Address          Foreign Address        State           PID\n  TCP    0.0.0.0:21             0.0.0.0:0              LISTENING       4120\n  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1012\n  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING       4\n',
+    what: 'list listening ports', why: 'Each <code>LISTENING</code> line is a service waiting for connections: 21 is FTP, 135 is RPC, 445 is SMB. Read the README before stopping any of them.' },
+  get_nettcp: { task: 'List only the listening TCP ports, using the PowerShell command.', accept: [{ re: /^get-nettcpconnection -state listen$/i }], answer: 'Get-NetTCPConnection -State Listen', hint: '<code>Get-NetTCPConnection</code> and a <code>-State</code> filter.',
+    out: '\nLocalAddress LocalPort RemoteAddress RemotePort State  AppliedSetting OwningProcess\n------------ --------- ------------- ---------- -----  ------------- -------------\n0.0.0.0      445       0.0.0.0       0          Listen                4\n0.0.0.0      135       0.0.0.0       0          Listen                1012\n0.0.0.0      21        0.0.0.0       0          Listen                4120\n',
+    what: 'list listeners', why: 'Same three listeners, in a table. Process 4120 owns port 21.' },
+  stop_service: { task: 'The README says the FTP service (<code>ftpsvc</code>) is not needed. Stop it.', accept: [{ re: /^stop-service (-name )?ftpsvc$/i, out: '' }, { re: /^net stop ftpsvc$/i, out: 'The Microsoft FTP Service service was stopped successfully.\n' }], answer: 'Stop-Service ftpsvc',
+    hint: '<code>Stop-Service</code> and the service name.', out: '', what: 'stop a service', why: 'Authorized, one change, recorded. Now verify it.' },
+  get_service: { task: 'Verify: check the status of <code>ftpsvc</code>.', accept: [{ re: /^get-service (-name )?ftpsvc$/i }], answer: 'Get-Service ftpsvc', hint: '<code>Get-Service</code> and the name.',
+    out: '\nStatus   Name               DisplayName\n------   ----               -----------\nStopped  ftpsvc             Microsoft FTP Service\n', what: 'verify a service', why: 'Stopped. Confirm the PC still does its job, then write the change record.' },
+
+  ipconfig_apipa: { task: 'Scenario B: users cannot reach anything. Show every network detail on this PC.', accept: [{ re: /^ipconfig ?\/all$/i }], answer: 'ipconfig /all', hint: 'The command with the switch that means "all".',
+    partial: [{ re: /^ipconfig$/i, msg: 'That is the short version. Add the switch that shows everything.' }],
+    out: '\nWindows IP Configuration\n\nEthernet adapter Ethernet:\n\n   Physical Address. . . . . . . . . : 02-42-AC-11-00-02\n   DHCP Enabled. . . . . . . . . . . : Yes\n   Autoconfiguration IPv4 Address. . : 169.254.37.118(Preferred)\n   Subnet Mask . . . . . . . . . . . : 255.255.0.0\n   Default Gateway . . . . . . . . . :\n   DNS Servers . . . . . . . . . . . :\n',
+    what: 'spot an APIPA address', why: '169.254.x.x is an address the PC gave itself because DHCP never answered. It does not prove the switch is broken.' },
+  ping_gw_fail: { task: 'Try the gateway anyway: ping <b>192.168.50.1</b>.', accept: [{ re: /^ping 192\.168\.50\.1$/i }, { re: /^ping -n ?4 192\.168\.50\.1$/i }], answer: 'ping 192.168.50.1', hint: 'The command is <code>ping</code>, then the address.',
+    out: '\nPinging 192.168.50.1 with 32 bytes of data:\nPING: transmit failed. General failure.\nPING: transmit failed. General failure.\nPING: transmit failed. General failure.\nPING: transmit failed. General failure.\n\nPing statistics for 192.168.50.1:\n    Packets: Sent = 4, Received = 0, Lost = 4 (100% loss),\n',
+    what: 'ping a gateway that is unreachable', why: '100% loss with "transmit failed": the packets never left. Next, prove the PC itself is healthy.' },
+  ping_lo: { task: 'Prove this PC\'s own network stack works: ping the loopback address <code>127.0.0.1</code>.', accept: [{ re: /^ping 127\.0\.0\.1$/i }], answer: 'ping 127.0.0.1', hint: 'The loopback address.',
+    out: '\nPinging 127.0.0.1 with 32 bytes of data:\nReply from 127.0.0.1: bytes=32 time<1ms TTL=128\nReply from 127.0.0.1: bytes=32 time<1ms TTL=128\nReply from 127.0.0.1: bytes=32 time<1ms TTL=128\nReply from 127.0.0.1: bytes=32 time<1ms TTL=128\n\nPing statistics for 127.0.0.1:\n    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),\n',
+    what: 'test the loopback', why: 'Loopback works, so the PC\'s own TCP/IP is fine. The fault is between the PC and DHCP.' },
+  ipconfig_renew: { task: 'Ask DHCP again: renew the lease. (Only on a PC you are sitting at.)', accept: [{ re: /^ipconfig ?\/renew$/i }], answer: 'ipconfig /renew', hint: '<code>ipconfig</code> with the switch that means "renew".',
+    partial: [{ re: /^ipconfig ?\/release$/i, msg: 'Release gives the address up. You want to ask for a new one: renew.' }],
+    out: '\nWindows IP Configuration\n\nEthernet adapter Ethernet:\n\n   Connection-specific DNS Suffix  . :\n   IPv4 Address. . . . . . . . . . . : 192.168.50.121\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.50.1\n',
+    what: 'renew a DHCP lease', why: 'The lease came back. Now verify the real service, not only the ping.' },
+
+  log_tail: { task: 'Show the last 5 lines of the security log, <code>C:\\Logs\\security.log</code>.',
+    accept: [{ re: /^(get-content|gc|cat|type) (-path )?c:\\logs\\security\.log -tail 5$/i }, { re: /^(get-content|gc) -tail 5 (-path )?c:\\logs\\security\.log$/i }], answer: 'Get-Content C:\\Logs\\security.log -Tail 5',
+    hint: '<code>Get-Content</code>, the file, then <code>-Tail 5</code>.', partial: [{ re: /^(get-content|gc|cat|type) c:\\logs\\security\.log$/i, msg: 'That prints the whole log. You only need the end.' }],
+    out: '12/04/2026 08:41:02  4625  Failed logon  user=admin  src=203.0.113.50\n12/04/2026 08:41:05  4625  Failed logon  user=admin  src=203.0.113.50\n12/04/2026 08:41:09  4625  Failed logon  user=Administrator  src=203.0.113.50\n12/04/2026 08:44:31  4624  Successful logon  user=student  src=192.168.50.20\n12/04/2026 08:51:12  4720  User account created  name=bhelper\n',
+    what: 'read the end of a log', why: 'Five lines tell a story: repeated failures from one outside address, then a new account appears.' },
+  log_select: { task: 'Find every failed logon in the log.', accept: [{ re: /^select-string ["']?failed["']? c:\\logs\\security\.log$/i }, { re: /^(get-content|gc|cat|type) c:\\logs\\security\.log \| select-string ["']?failed["']?$/i }],
+    answer: 'Select-String Failed C:\\Logs\\security.log', hint: '<code>Select-String</code>, the text to find, then the file.',
+    out: 'C:\\Logs\\security.log:41:12/04/2026 08:40:58  4625  Failed logon  user=admin  src=203.0.113.50\nC:\\Logs\\security.log:42:12/04/2026 08:41:02  4625  Failed logon  user=admin  src=203.0.113.50\nC:\\Logs\\security.log:43:12/04/2026 08:41:05  4625  Failed logon  user=admin  src=203.0.113.50\nC:\\Logs\\security.log:44:12/04/2026 08:41:09  4625  Failed logon  user=Administrator  src=203.0.113.50\n',
+    what: 'filter a log', why: 'Same source address, many tries: that is a pattern worth a finding.' },
+  log_count: { task: 'Count the failed logons: pipe the search into <code>Measure-Object</code>.', accept: [{ re: /^select-string ["']?failed["']? c:\\logs\\security\.log \| measure-object$/i }],
+    answer: 'Select-String Failed C:\\Logs\\security.log | Measure-Object', hint: 'The same search, then <code>|</code> and <code>Measure-Object</code>.',
+    out: '\nCount    : 14\nAverage  :\nSum      :\nMaximum  :\nMinimum  :\nProperty :\n', what: 'count matches', why: '14 failed logons. The count turns a log into evidence.' },
+  find_evidence: { task: 'A file named <code>incident.log</code> is somewhere on this PC. Find it.', accept: [{ re: /^(get-childitem|gci|ls|dir) c:\\ -recurse -filter incident\.log$/i }],
+    answer: 'Get-ChildItem C:\\ -Recurse -Filter incident.log', hint: '<code>Get-ChildItem</code> starting at <code>C:\\</code>, with <code>-Recurse</code> and <code>-Filter</code>.',
+    out: '\n    Directory: C:\\Users\\student\\evidence\n\nMode                 LastWriteTime         Length Name\n----                 -------------         ------ ----\n-a----        12/3/2026  10:14 PM            312 incident.log\n', what: 'search the whole PC', why: '<code>-Recurse</code> searches every folder below the starting point.' },
+  cat_evidence: { task: 'Read the file you just found: <code>C:\\Users\\student\\evidence\\incident.log</code>.', accept: [{ re: /^(get-content|gc|cat|type) c:\\users\\student\\evidence\\incident\.log$/i }], answer: 'Get-Content C:\\Users\\student\\evidence\\incident.log',
+    hint: '<code>Get-Content</code> and the full path.', out: '12/03/2026 22:14:07  4663  File deleted  user=bhelper  path=C:\\Logs\\system.old\n12/03/2026 22:14:15  4624  Successful logon  user=bhelper  src=198.51.100.7\n', what: 'read a file', why: 'Read before you trust it. A log tells you what happened and who did it.' },
+  get_history: { task: 'Retrace your steps: show the commands you have run this session.', accept: [{ re: /^(get-history|history|h)$/i }], answer: 'Get-History', hint: '"Get" the history.',
+    out: '\n  Id CommandLine\n  -- -----------\n   1 Get-ChildItem C:\\ -Recurse -Filter incident.log\n   2 Get-Content C:\\Users\\student\\evidence\\incident.log\n   3 Get-History\n', what: 'show command history', why: '<code>Get-History</code> is your own log. It is also how an investigator reads what someone else typed.' }
+};
+
+function build(base, items) {
+  return items.map(function (it) {
+    var id = Array.isArray(it) ? it[0] : it, over = Array.isArray(it) ? it[1] : {};
+    var b = base[id]; if (!b) throw new Error('missing block ' + id);
+    var r = {}, k; for (k in b) r[k] = b[k]; for (k in over) r[k] = over[k];
+    return r;
+  });
+}
+function addDay(id, date, label, wo, host, lx, ps) {
+  var m = DAYS.d01.tracks;
+  DAYS[id] = { label: label, date: date, wo: wo, tracks: {
+    linux: { name: 'Linux', cls: 'linux', start: '~', host: host, title: m.linux.title, banner: [host + ' \u00b7 Blue Land', 'Type a command and press Enter.'],
+      notFound: m.linux.notFound, known: m.linux.known.concat(LINUX_EXTRA_KNOWN), screens: build(LX, lx) },
+    ps: { name: 'PowerShell', cls: 'ps', start: 'C:\\Users\\student', title: m.ps.title, banner: ['Windows PowerShell', 'Copyright (C) Microsoft Corporation. All rights reserved.', ''],
+      notFound: m.ps.notFound, known: m.ps.known.concat(PS_EXTRA_KNOWN), screens: build(PX, ps) }
+  } };
+}
+
+var R = function (t) { return { task: 'Retrieval: ' + t }; };
+
+addDay('d02', '2026-10-30', 'Day 2 \u00b7 Fri 10/30', 'Work order: Who is on this machine?', 'kali',
+  ['whoami', 'id', 'ip_link', 'passwd', 'grep_bash', 'id_bhelper'],
+  ['whoami', 'net_user', 'getmac', 'net_user_bhelper', 'local_admins']);
+addDay('d03', '2026-11-02', 'Day 3 \u00b7 Mon 11/2', 'Work order: Who has this address?', 'kali',
+  ['ip_neigh0', 'ping_gw1', 'ip_neigh1', ['ip_link', R('show this station\'s MAC address.')], ['ip_route', R('which address is the default gateway?')]],
+  ['arp_a0', ['ping_gw', { task: 'Make the PC talk to its gateway: ping <b>192.168.50.1</b>.' }], 'arp_a1', ['getmac', R('show this PC\'s MAC address.')]]);
+addDay('d04', '2026-11-04', 'Day 4 \u00b7 Wed 11/4', 'Work order: Audit the lab addresses', 'kali',
+  ['ip_brief', 'ip_route_net', ['ping_gw', R('test the gateway with exactly four pings.')], 'hostname', ['ns', R('test name lookup for <code>example.com</code>.')]],
+  ['ipconfig', 'hostname', 'ipconfig_dns', ['ping_gw', R('test the gateway, 192.168.50.1.')]]);
+addDay('d05', '2026-11-06', 'Day 5 \u00b7 Fri 11/6', 'Work order: What is installed, and is it current?', 'cp-ubuntu',
+  ['hostname', 'uname_a', 'os_release', 'dpkg_ssh', ['ip_link', { task: 'Is this station on a wired or wireless link? Show the interfaces: <code>eth</code> is wired, <code>wlan</code> is wireless.', why: 'Only <code>eth0</code> appears, so this station is on wired Ethernet.' }]],
+  ['hostname', 'get_netadapter', 'get_hotfix', 'ipconfig_dns']);
+addDay('d06', '2026-11-09', 'Day 6 \u00b7 Mon 11/9', 'Work order: Static or dynamic?', 'kali',
+  [['pwd', R('where are you?')], ['ls', R('what is here?')], ['cd_blueland', R('walk into <code>blueland</code>.')], ['cd_up', R('step back up one level.')], ['mkdir', R('build a directory named <code>cleared</code>.')],
+   ['ip_addr', { task: 'Is this station\'s address static or dynamic? Show the addresses and look for the word <code>dynamic</code>.' }]],
+  [['pwd', R('where are you?')], ['ls', R('what is here?')], ['cd', R('walk into <code>blueland</code>.')], ['cd_up', R('step back up one level.')], ['mkdir', R('build a folder named <code>cleared</code>.')],
+   ['ipconfig_all', { task: 'Is this PC\'s address static or dynamic? Show every detail and look at the <b>DHCP Enabled</b> line.' }]]);
+addDay('d07', '2026-11-11', 'Day 7 \u00b7 Wed 11/11', 'Work order: Build the as-built record', 'kali',
+  [['hostname', { task: 'As-built row, device name: what is this station called?' }], ['uname_a', { task: 'As-built row, software: show the kernel name and version.' }],
+   ['ip_brief', { task: 'As-built row, address: show the one-line address summary.' }], ['ip_link', { task: 'As-built row, MAC: show the layer 2 view of the interfaces.' }], ['ip_route_net', { task: 'As-built row, gateway: show the routes.' }]],
+  [['hostname', { task: 'As-built row, device name: what is this PC called?' }], ['ipconfig_all', { task: 'As-built row, address, mask and gateway: show every detail.' }], ['getmac', { task: 'As-built row, MAC: show this PC\'s MAC address.' }], ['ping_gw', R('test the gateway.')]]);
+addDay('d08', '2026-11-13', 'Day 8 \u00b7 Fri 11/13', 'Work order: Share it, lock it down', 'cp-ubuntu',
+  ['ls_l_media', 'chmod_750', 'ls_l_media_after', 'ufw_status0', 'ufw_enable', 'ufw_allow445', 'ufw_status1'],
+  ['icacls_media', 'get_smbshare', 'fw_profile', 'test_netconn']);
+addDay('d09', '2026-11-16', 'Day 9 \u00b7 Mon 11/16', 'Work order: Catch the AI', 'cp-ubuntu',
+  ['ls_l_777', ['chmod_750', { task: 'Fix it: put <code>media</code> back to owner full access, group read and enter, others nothing.' }], 'ls_l_media_after', ['ip_route', R('which address is the default gateway?')]],
+  ['icacls_everyone', 'icacls_fix', ['icacls_media', { task: 'Verify the fix: show the permissions on <code>media</code>.' }]]);
+addDay('d10', '2026-11-18', 'Day 10 \u00b7 Wed 11/18', 'Work order: Least-privilege audit', 'cp-ubuntu',
+  ['ls_l_audit', 'chmod_ow', 'ls_l_audit_after', ['id', { task: 'Least privilege check: which groups are you in? Do you really need <code>sudo</code> for everyday work?' }]],
+  [['icacls_media', { task: 'Audit: who has rights on the <code>media</code> folder?' }], 'local_admins']);
+addDay('d11', '2026-11-20', 'Day 11 \u00b7 Fri 11/20', 'Work order: What is listening?', 'cp-ubuntu',
+  ['ss_tuln', 'ps_grep', 'ss_save', 'stop_ftp', 'ss_after'],
+  ['netstat_ano', 'get_nettcp', 'stop_service', 'get_service']);
+addDay('d12', '2026-11-30', 'Day 12 \u00b7 Mon 11/30', 'Work order: Speed run', 'kali',
+  [['pwd', R('speed run. Where are you?')], ['ls', R('what is here?')], ['cd_blueland', R('walk into <code>blueland</code>.')], ['cd_up', R('step back up one level.')], ['mkdir', R('build a directory named <code>cleared</code>.')], ['ip_route', R('which address is the default gateway?')]],
+  [['pwd', R('speed run. Where are you?')], ['ls', R('what is here?')], ['cd', R('walk into <code>blueland</code>.')], ['cd_up', R('step back up one level.')], ['mkdir', R('build a folder named <code>cleared</code>.')]]);
+addDay('d13', '2026-12-02', 'Day 13 \u00b7 Wed 12/2', 'Work order: Computer Lab Disconnected, full mission', 'kali',
+  ['ip_addr_apipa', 'ip_route_nodef', 'ping_gw_fail', 'ping_lo', 'dhclient'],
+  ['ipconfig_apipa', 'ping_gw_fail', 'ping_lo', 'ipconfig_renew']);
+addDay('d14', '2026-12-04', 'Day 14 \u00b7 Fri 12/4', 'Work order: Read the evidence', 'cp-ubuntu',
+  ['tail_auth', 'grep_failed', 'grep_count', 'wc_l'],
+  ['log_tail', 'log_select', 'log_count']);
+addDay('d15', '2026-12-07', 'Day 15 \u00b7 Mon 12/7', 'Work order: Follow the trail', 'cp-ubuntu',
+  ['find_evidence', 'cat_evidence', ['grep_failed', R('find every failed password attempt in the log.')], 'history'],
+  ['find_evidence', 'cat_evidence', ['log_select', R('find every failed logon in the log.')], 'get_history']);
+addDay('d16', '2026-12-09', 'Day 16 \u00b7 Wed 12/9', 'Work order: Review stations', 'cp-ubuntu',
+  [['id', R('show your user ID and groups.')], ['ip_route', R('which address is the default gateway?')], ['ping_gw', R('test the gateway with exactly four pings.')], ['ns', R('test name lookup for <code>example.com</code>.')], ['ss_tuln', R('list the listening ports.')], ['ls_l_media_after', R('show the permissions.')]],
+  [['whoami', R('who are you logged in as?')], ['ipconfig_all', R('show every network detail.')], ['ping_gw', R('test the gateway, 192.168.50.1.')], ['nslookup', R('test name lookup for <code>example.com</code>.')], ['netstat_ano', R('list the listening ports.')]]);
+DAYS.d17 = { label: 'Day 17 \u00b7 Fri 12/11', date: '2026-12-11', wo: 'Unit 2 test day', rest: 'No warm-up today. It is Unit 2 test day. Good luck.' };
+addDay('d18', '2026-12-15', 'Day 18 \u00b7 Tue 12/15', 'Work order: Final review', 'cp-ubuntu',
+  [['pwd', R('where are you?')], ['ls_l_media_after', R('show the permissions.')], ['ip_route', R('which address is the default gateway?')], ['ping_gw', R('test the gateway with exactly four pings.')], ['ns', R('test name lookup for <code>example.com</code>.')], ['ss_tuln', R('list the listening ports.')], ['grep_failed', R('find every failed password attempt in the log.')]],
+  [['pwd', R('where are you?')], ['ipconfig_all', R('show every network detail.')], ['ping_gw', R('test the gateway, 192.168.50.1.')], ['nslookup', R('test name lookup for <code>example.com</code>.')], ['netstat_ano', R('list the listening ports.')], ['log_select', R('find every failed logon in the log.')]]);
+
+
+var S = { day: 'd01', track: 'linux', i: 0, misses: 0, phase: 'ask', results: [], assisted: false, cwd: '~', t0: 0 };
+var $ = function (id) { return document.getElementById(id); };
+var body = $('body'), form = $('form'), cmd = $('cmd'), coach = $('coach'), actions = $('actions');
+
+function T() { return TRACKS[S.track]; }
+function norm(s) { return s.trim().replace(/\s+/g, ' '); }
+
+function promptEl(cwd) {
+  var s = document.createElement('span');
+  s.className = 'pr';
+  if (S.track === 'linux') {
+    s.innerHTML = '<span class="u"></span>:<span class="p"></span>$';
+    s.querySelector('.u').textContent = 'student@' + (T().host || 'kali');
+    s.querySelector('.p').textContent = cwd;
+  } else {
+    s.textContent = 'PS ' + cwd + '>';
+  }
+  return s;
+}
+function addLine(text, cls) {
+  var d = document.createElement('div');
+  d.className = 'ln ' + (cls || '');
+  d.textContent = text;
+  body.insertBefore(d, form);
+  return d;
+}
+function addOut(text, cls) {
+  if (!text) return;
+  var p = document.createElement('pre');
+  p.className = 'out ' + (cls || '');
+  p.textContent = String(text).replace(/\{host\}/g, T().host || 'kali');
+  body.insertBefore(p, form);
+}
+function addCmd(text) {
+  var d = document.createElement('div');
+  d.className = 'ln';
+  d.appendChild(promptEl(S.cwd));
+  var c = document.createElement('span');
+  c.className = 'cmdtxt';
+  c.textContent = ' ' + text;
+  d.appendChild(c);
+  body.insertBefore(d, form);
+}
+function scrollDown() { body.scrollTop = body.scrollHeight; }
+
+function drawProgress() {
+  var n = T().screens.length;
+  var h = '';
+  for (var k = 0; k < n; k++) {
+    var c = S.results[k] || (k === S.i && S.phase !== 'end' ? 'now' : '');
+    h += '<i class="' + c + '"></i>';
+  }
+  $('progress').innerHTML = h;
+  $('count').textContent = S.phase === 'end' ? 'Finished' : 'Screen ' + (S.i + 1) + ' of ' + n;
+}
+
+function startTrack(name) {
+  S = { day: S.day, track: name, i: 0, misses: 0, phase: 'ask', results: [], assisted: false, cwd: TRACKS[name].start, t0: 0 };
+  document.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-selected', b.dataset.track === name ? 'true' : 'false'); });
+  $('term').className = 'term ' + T().cls;
+  // clear transcript
+  Array.prototype.slice.call(body.children).forEach(function (el) { if (el !== form) body.removeChild(el); });
+  T().banner.forEach(function (l) { addLine(l, 'dim'); });
+  $('summary').hidden = true;
+  $('missionBox').hidden = false; $('term').hidden = false;
+  showScreen();
+}
+
+function showScreen() {
+  var sc = T().screens[S.i];
+  S.misses = 0; S.assisted = false; S.phase = 'ask';
+  $('task').innerHTML = sc.task;
+  $('termTitle').textContent = T().title(S.cwd);
+  var slot = $('promptSlot'); slot.innerHTML = ''; slot.appendChild(promptEl(S.cwd));
+  cmd.disabled = false; cmd.value = '';
+  coach.innerHTML = '<p>Type the next command and press Enter.</p>';
+  actions.innerHTML = '';
+  drawProgress();
+  scrollDown();
+  cmd.focus({ preventScroll: true });
+}
+
+function check(raw) {
+  var sc = T().screens[S.i];
+  var c = norm(raw);
+  if (!c) return;
+  if (!S.t0) S.t0 = Date.now();
+  var i, m;
+  for (i = 0; i < sc.accept.length; i++) {
+    if (sc.accept[i].re.test(c)) { return success(raw, sc, sc.accept[i]); }
+  }
+  addCmd(raw.trim());
+  var first = c.split(' ')[0].toLowerCase();
+  S.misses++;
+  var msg = null;
+  for (i = 0; sc.partial && i < sc.partial.length; i++) { if (sc.partial[i].re.test(c)) { msg = sc.partial[i].msg; break; } }
+  if (msg) {
+    // a close-but-wrong command gets its own specific coaching
+  } else if (T().known.indexOf(first) === -1) {
+    addLine(T().notFound(c.split(' ')[0]), 'err');
+    msg = 'The terminal does not know that command. Check the spelling.';
+  } else {
+    msg = 'That is a real command, but it does not do what this mission asks. Read the mission again.';
+  }
+  var html = '<p><span class="no">Not yet.</span> ' + msg + '</p>';
+  if (S.misses >= 2) html += '<p>Hint: ' + sc.hint + '</p>';
+  coach.innerHTML = html;
+  actions.innerHTML = '';
+  if (S.misses >= 3) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.textContent = 'Show me the command';
+    b.onclick = function () { S.assisted = true; cmd.value = sc.answer; cmd.focus(); coach.innerHTML = '<p>Press Enter to run it, then read the output.</p>'; actions.innerHTML = ''; };
+    actions.appendChild(b);
+  }
+  cmd.value = '';
+  $('term').classList.remove('shake'); void $('term').offsetWidth; $('term').classList.add('shake');
+  scrollDown();
+}
+
+function success(raw, sc, hit) {
+  addCmd(raw.trim());
+  addOut(hit.out !== undefined ? hit.out : sc.out);
+  if (sc.cwd) S.cwd = sc.cwd;
+  S.results[S.i] = S.assisted ? 'shown' : (S.misses ? 'retry' : 'first');
+  S.phase = 'done';
+  cmd.disabled = true; cmd.value = '';
+  var slot = $('promptSlot'); slot.innerHTML = ''; slot.appendChild(promptEl(S.cwd));
+  $('termTitle').textContent = T().title(S.cwd);
+  coach.innerHTML = '<p><span class="ok">Correct.</span> ' + (hit.note ? hit.note + ' ' : '') + sc.why + '</p>';
+  var last = S.i === T().screens.length - 1;
+  actions.innerHTML = '';
+  var b = document.createElement('button');
+  b.type = 'button'; b.className = 'btn primary'; b.textContent = last ? 'Finish' : 'Next screen';
+  b.onclick = next;
+  actions.appendChild(b);
+  drawProgress();
+  scrollDown();
+  b.focus({ preventScroll: true });
+}
+
+function next() {
+  if (S.i >= T().screens.length - 1) return finish();
+  S.i++;
+  showScreen();
+}
+
+function finish() {
+  S.phase = 'end';
+  drawProgress();
+  var sc = T().screens, n = sc.length;
+  var f = S.results.filter(function (r) { return r === 'first'; }).length;
+  var r = S.results.filter(function (r) { return r === 'retry'; }).length;
+  var s = S.results.filter(function (r) { return r === 'shown'; }).length;
+  var secs = Math.max(1, Math.round((Date.now() - S.t0) / 1000));
+  var mm = Math.floor(secs / 60), ss = ('0' + (secs % 60)).slice(-2);
+  var other = S.track === 'linux' ? 'ps' : 'linux';
+  var h = '<h2>Session complete</h2><ul class="stats">' +
+    '<li><b>' + f + '</b> of ' + n + ' on the first try</li>' +
+    '<li><b>' + r + '</b> after a retry</li>' +
+    '<li><b>' + s + '</b> with "Show me"</li>' +
+    '<li><b>' + mm + ':' + ss + '</b> total</li></ul>' +
+    '<p class="label">Your command log</p><ul class="log">';
+  sc.forEach(function (x) { h += '<li><code></code><span>' + x.what + '</span></li>'; });
+  h += '</ul><div class="actions"><button class="btn primary" id="again" type="button">Run it again</button>' +
+    '<button class="btn" id="swap" type="button">Try ' + TRACKS[other].name + '</button></div>';
+  var box = $('summary'); box.innerHTML = h;
+  box.querySelectorAll('.log code').forEach(function (el, k) { el.textContent = sc[k].answer; });
+  box.hidden = false;
+  $('missionBox').hidden = true; $('term').hidden = true;
+  coach.innerHTML = ''; actions.innerHTML = '';
+  $('again').onclick = function () { startTrack(S.track); };
+  $('swap').onclick = function () { startTrack(other); };
+  $('again').focus({ preventScroll: true });
+}
+
+form.addEventListener('submit', function (e) { e.preventDefault(); if (S.phase === 'ask') check(cmd.value); });
+document.querySelectorAll('.tabs button').forEach(function (b) { b.addEventListener('click', function () { if (!DAYS[S.day].rest) startTrack(b.dataset.track); }); });
+body.addEventListener('click', function () { if (S.phase === 'ask') cmd.focus(); });
+var daySel = $('daySel');
+function todayKey() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function sortedIds() { return Object.keys(DAYS).sort(function (a, b) { return DAYS[a].date < DAYS[b].date ? -1 : 1; }); }
+function pickDay() {
+  var h = (location.hash || '').replace('#', '');
+  if (DAYS[h]) return { id: h, auto: false };
+  var ids = sortedIds(), t = todayKey(), hit = ids.filter(function (k) { return DAYS[k].date === h; });
+  if (hit.length) return { id: hit[0], auto: false };
+  var pick = ids[0], exact = false;
+  ids.forEach(function (k) { if (DAYS[k].date <= t) pick = k; if (DAYS[k].date === t) exact = true; });
+  var notice = '';
+  if (t < DAYS[ids[0]].date) notice = 'The first set opens ' + DAYS[ids[0]].label.split(' · ')[1] + '. Showing it early.';
+  else if (!exact) notice = 'No new set today. Showing the most recent one.';
+  return { id: pick, auto: true, notice: notice };
+}
+function showRest(d) {
+  $('missionBox').hidden = true; $('term').hidden = true; $('progress').innerHTML = ''; $('count').textContent = '';
+  coach.innerHTML = ''; actions.innerHTML = '';
+  var box = $('summary'); box.innerHTML = '<h2></h2>'; box.firstChild.textContent = d.rest; box.hidden = false;
+}
+function loadDay(id, auto, notice) {
+  S.day = id; TRACKS = DAYS[id].tracks || {};
+  $('dayLabel').textContent = 'AP Networking · ' + DAYS[id].label;
+  $('wo').textContent = DAYS[id].wo;
+  var n = $('notice'); n.hidden = !notice; n.textContent = notice || '';
+  daySel.value = auto ? '' : id;
+  if (DAYS[id].rest) return showRest(DAYS[id]);
+  startTrack(TRACKS[S.track] ? S.track : 'linux');
+}
+function route() { var p = pickDay(); loadDay(p.id, p.auto, p.notice); }
+var first = document.createElement('option'); first.value = ''; first.textContent = 'Today'; daySel.appendChild(first);
+sortedIds().forEach(function (id) { var o = document.createElement('option'); o.value = id; o.textContent = DAYS[id].label; daySel.appendChild(o); });
+daySel.hidden = false;
+daySel.addEventListener('change', function () {
+  if (daySel.value) { location.hash = daySel.value; }
+  else { history.replaceState(null, '', location.pathname + location.search); route(); }
+});
+window.addEventListener('hashchange', route);
+route();
+</script>
+
+</body>
+</html>
